@@ -1,16 +1,23 @@
+use std::collections::BTreeMap;
+
 use rand::prelude::*;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
-use std::collections::BTreeMap;
 
-use serde::Deserialize;
+use rocket::response::Redirect;
+use serde::{Deserialize, Serialize};
+
+use rocket_dyn_templates::{context, Template};
+
+#[macro_use]
+extern crate rocket;
 
 #[derive(Deserialize)]
 struct ChampionsResponse {
     data: BTreeMap<String, Champion>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct Champion {
     id: String,
     name: String,
@@ -19,15 +26,34 @@ struct Champion {
     info: ChampionInfo,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct ChampionInfo {
     attack: u8,
     defense: u8,
     magic: u8,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut rng: Pcg64 = Seeder::from("stripy zebra").into_rng();
+#[get("/")]
+fn bare_index() -> Redirect {
+    let word1 = random_word::gen_len(rand::random_range(3..=6), random_word::Lang::En)
+        .expect("unable to generate word");
+    let word2 = random_word::gen_len(rand::random_range(3..=6), random_word::Lang::En)
+        .expect("unable to generate word");
+
+    Redirect::to(format!("/{word1}_{word2}"))
+}
+
+#[get("/<seed>")]
+fn index(seed: &str) -> Template {
+    let champions = get_random_champs(seed).expect("unable to fetch champions");
+
+    let grid = champions.chunks(6).collect::<Vec<_>>();
+
+    Template::render("index", context!( seed: seed, champ_grid: grid ))
+}
+
+fn get_random_champs(seed: &str) -> Result<Vec<Champion>, Box<dyn std::error::Error>> {
+    let mut rng: Pcg64 = Seeder::from(seed).into_rng();
 
     let champions =
         ureq::get("https://ddragon.leagueoflegends.com/cdn/15.4.1/data/en_US/champion.json")
@@ -36,25 +62,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .read_json::<ChampionsResponse>()?
             .data;
 
-    let champions2 = champions.values().choose_multiple(&mut rng, 24);
+    Ok(champions.values().cloned().choose_multiple(&mut rng, 24))
+}
 
-    let mut out = "<html><body><table>".to_string();
+#[launch]
+fn rocket() -> _ {
+    // let mut out = "<html><body><table>".to_string();
+    // out += "<tr>";
+    // out += &format!(
+    //     "<td><img src=\"https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/{}.png\" /></td>",
+    //     champion.id
+    // );
+    // out += "</tr>";
 
-    for champion_row in champions2.chunks(6) {
-        out += "<tr>";
-        for champion in champion_row {
-            println!("{}", champion.name);
-            out += &format!(
-                "<td><img src=\"https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/{}.png\" /></td>",
-                champion.id
-            );
-        }
-        out += "</tr>";
-    }
+    // out += "</table></body></html>";
 
-    out += "</table></body></html>";
+    // std::fs::write("./board.html", out)?;
 
-    std::fs::write("./board.html", out)?;
-
-    Ok(())
+    rocket::build()
+        .mount("/", routes![bare_index, index])
+        .attach(Template::fairing())
 }

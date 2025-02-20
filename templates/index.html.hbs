@@ -1,0 +1,15 @@
+<html>
+  <body>
+    <h1 style="text-align: center">Guess Who LoL: {{seed}}</h1>
+
+    <table style="margin: auto;">
+      {{#each champ_grid}}
+        <tr>
+        {{#each this }}
+          <td><img src="https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/{{id}}.png" width="100%"/></td>
+        {{/each}}
+        </tr>
+      {{/each}}
+    </table>
+  </body>
+</html>
