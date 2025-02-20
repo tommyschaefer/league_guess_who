@@ -1,4 +1,25 @@
 <html>
+  <head>
+    <style>
+      td {
+      position: relative
+      }
+
+      .info {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: rgba(255,255,255,0.7);
+        width: 100%;
+        height: 60%;
+        z-index: 1;
+      }
+
+      .champ:hover + .info { display: block; }
+    </style>
+  </head>
+
   <body>
     <h1 style="text-align: center">Guess Who LoL: {{seed}}</h1>
 
@@ -6,7 +27,35 @@
       {{#each champ_grid}}
         <tr>
         {{#each this }}
-          <td><img src="https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/{{id}}.png" width="100%"/></td>
+          {{#with this/0}}
+          <td>
+            <img
+            src="https://ddragon.leagueoflegends.com/cdn/img/champion/loading/{{id}}_{{../this/1/num}}.jpg" width="100%" class="champ"/>
+            <div class="info">
+              <h4 style="text-align: center">
+                {{#if ../this/1/num~}}
+                  {{../this/1/name}}
+                {{else}}
+                  {{name}}
+                {{~/if}}, {{title}}</h3>
+
+              <ul>
+                <li>Attack: {{info/attack}}/10</li>
+                <li>Defense: {{info/defense}}/10</li>
+                <li>Magic: {{info/magic}}/10</li>
+                <li>Resource: {{partype}}</li>
+                <li>
+                  Tags
+                  <ul>
+                    {{#each tags}}
+                      <li>{{this}}</li>
+                    {{/each}}
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </td>
+          {{/with}}
         {{/each}}
         </tr>
       {{/each}}

@@ -24,6 +24,10 @@ struct Champion {
     title: String,
     tags: Vec<String>,
     info: ChampionInfo,
+    partype: String,
+
+    #[serde(default)]
+    skins: Vec<Skin>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,6 +35,12 @@ struct ChampionInfo {
     attack: u8,
     defense: u8,
     magic: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Skin {
+    num: u8,
+    name: String,
 }
 
 #[get("/")]
@@ -52,7 +62,7 @@ fn index(seed: &str) -> Template {
     Template::render("index", context!( seed: seed, champ_grid: grid ))
 }
 
-fn get_random_champs(seed: &str) -> Result<Vec<Champion>, Box<dyn std::error::Error>> {
+fn get_random_champs(seed: &str) -> Result<Vec<(Champion, Skin)>, Box<dyn std::error::Error>> {
     let mut rng: Pcg64 = Seeder::from(seed).into_rng();
 
     let champions =
@@ -62,7 +72,27 @@ fn get_random_champs(seed: &str) -> Result<Vec<Champion>, Box<dyn std::error::Er
             .read_json::<ChampionsResponse>()?
             .data;
 
-    Ok(champions.values().cloned().choose_multiple(&mut rng, 24))
+    let chosen_champions = champions.values().choose_multiple(&mut rng, 24);
+
+    let mut res = Vec::new();
+
+    for champ in chosen_champions {
+        let fetched_champ = ureq::get(format!(
+            "https://ddragon.leagueoflegends.com/cdn/15.4.1/data/en_US/champion/{}.json",
+            champ.id
+        ))
+        .call()?
+        .body_mut()
+        .read_json::<ChampionsResponse>()?
+        .data;
+
+        let v = fetched_champ.values().next().cloned().unwrap();
+        let skin = v.skins.choose(&mut rng).unwrap().clone();
+
+        res.push((v, skin))
+    }
+
+    Ok(res)
 }
 
 #[launch]
