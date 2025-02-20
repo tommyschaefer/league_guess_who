@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ureq = { version = "3", features = [ "json" ] }
+serde = { version = "1", features = [ "derive" ] }
+rand = { version = "0.9" }
+rand_seeder = { version = "0.4" }
+rand_pcg = { version = "0.9" }
